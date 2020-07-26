@@ -3,11 +3,11 @@ import numpy as np
 import pickle
 import pandas as pd
 
+SR = 48000
 
-def convert_audio_files_to_mfcc(path):
-    y, sr = librosa.load(path)
+
+def get_features_from_timeframes(y, label_1, label_2, sr):
     print('y', y.size)
-    sr = 48000
 
     # with open(path, 'rb') as f:
     #
@@ -27,17 +27,27 @@ def convert_audio_files_to_mfcc(path):
     # nbr_voices = y.shape[0] - 1
 
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-    # mfcc = np.mean(mfcc.T, axis=0)
-
-    nbr_timeframes = mfcc.shape[1]
 
     zero_crossing_rate = librosa.feature.zero_crossing_rate(y=y)
-    # zero_crossing_rate = np.mean(zero_crossing_rate)
 
     S, phase = librosa.magphase(librosa.stft(y))
     spectral_rolloff = librosa.feature.spectral_rolloff(S=S, sr=sr)
-    # spectral_rolloff = np.mean(spectral_rolloff)
 
+    nbr_timeframes = mfcc.shape[1]
+    window_size = int(len(y) / nbr_timeframes)
+    label_1_mean = []
+    label_2_mean = []
+
+    # for i in range(0, len(label_1), window_size):
+    for i in range(0, len(y), window_size):
+        label_1_mean.append(np.mean(label_1[i:i + window_size]))
+        label_2_mean.append(np.mean(label_2[i:i + window_size]))
+
+    label_1_mean = label_1_mean[:-1]
+    label_2_mean = label_2_mean[:-1]
+
+    print('label_1', len(label_1_mean))
+    print('label_2', len(label_2_mean))
 
     print('MFCC')
     print(mfcc.shape)
@@ -82,14 +92,20 @@ def data_augmentaton(sound_1: np.ndarray, sound_2: np.ndarray, sample_length: in
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     t = np.linspace(0, 10, 1000)
-    s1 = np.sin(t)
-    s2 = np.sin(2*t)
 
-    full_s, l1, l2 = data_augmentaton(s1, s2, 30, 100)
+    s1, _ = librosa.load('data/trimmed/victor_5.wav', sr=SR)
+    s2, _ = librosa.load('data/trimmed/isak_1.wav', sr=SR)
+
+    full_s, l1, l2 = data_augmentaton(s1, s2, sample_length=1, sr=SR)
+    features = get_features_from_timeframes(y=full_s, label_1=l1, label_2=l2, sr=SR)
+
     plt.plot(full_s)
     plt.plot(l1)
     plt.plot(l2)
     plt.show()
+
+# TODO: Classify
+# TODO: Implement more features
 
 
 
